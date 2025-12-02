@@ -44,6 +44,8 @@ services:
 docker-compose up -d
 ```
 
+启动后访问 `http://localhost:3000`，默认密码为 **`admin123`**。
+
 ### 从源码构建
 
 ```bash
