@@ -13,6 +13,20 @@
 - 🔔 **Webhook 通知** - 自定义 Webhook 通知（支持 Discord、Slack 等）
 - 🔍 **关键词检测** - 检测页面是否包含/不包含特定关键词
 - ⏰ **定时检测** - 每 5 分钟自动检测
+
+### 使用预构建镜像（推荐）
+
+#### Docker Compose
+
+创建 `docker-compose.yml` 文件：
+
+```yaml
+version: '3.8'
+
+services:
+  uptime-monitor:
+    image: ghcr.io/debbide/monitor:latest
+    container_name: uptime-monitor
     restart: unless-stopped
     ports:
       - "3000:3000"
