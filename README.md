@@ -1,9 +1,9 @@
-# 网站监控系统 (Docker 版)
+# CloudEye 监控面板
 
 [![Docker Build](https://github.com/debbide/monitor/actions/workflows/docker-build.yml/badge.svg)](https://github.com/debbide/monitor/actions/workflows/docker-build.yml)
 [![Code Quality](https://github.com/debbide/monitor/actions/workflows/code-quality.yml/badge.svg)](https://github.com/debbide/monitor/actions/workflows/code-quality.yml)
 
-基于 Docker 部署的网站监控系统，支持 HTTP/TCP/Komari 面板监控。
+一个现代化的服务监控面板，支持 HTTP/TCP/Komari 面板监控，基于 Docker 快速部署。
 
 ## ✨ 特性
 
