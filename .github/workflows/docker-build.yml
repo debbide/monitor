@@ -7,10 +7,30 @@ on:
       - master
     tags:
       - 'v*.*.*'
+    paths:
+      - 'src/**'
+      - 'server/**'
+      - 'public/**'
+      - 'package*.json'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+      - '.github/workflows/docker-build.yml'
   pull_request:
     branches:
       - main
       - master
+    paths:
+      - 'src/**'
+      - 'server/**'
+      - 'public/**'
+      - 'package*.json'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'vite.config.ts'
+      - 'tsconfig*.json'
+      - '.github/workflows/docker-build.yml'
   workflow_dispatch:
 
 env:
