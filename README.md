@@ -1,7 +1,7 @@
 # 网站监控系统 (Docker 版)
 
-[![Docker Build](https://github.com/YOUR_USERNAME/uptime-monitor-docker/actions/workflows/docker-build.yml/badge.svg)](https://github.com/YOUR_USERNAME/uptime-monitor-docker/actions/workflows/docker-build.yml)
-[![Code Quality](https://github.com/YOUR_USERNAME/uptime-monitor-docker/actions/workflows/code-quality.yml/badge.svg)](https://github.com/YOUR_USERNAME/uptime-monitor-docker/actions/workflows/code-quality.yml)
+[![Docker Build](https://github.com/debbide/monitor/actions/workflows/docker-build.yml/badge.svg)](https://github.com/debbide/monitor/actions/workflows/docker-build.yml)
+[![Code Quality](https://github.com/debbide/monitor/actions/workflows/code-quality.yml/badge.svg)](https://github.com/debbide/monitor/actions/workflows/code-quality.yml)
 
 基于 Docker 部署的网站监控系统，支持 HTTP/TCP/Komari 面板监控。
 
@@ -20,30 +20,12 @@
 ## 🚀 快速开始
 
 ### 使用预构建镜像（推荐）
-
-我们提供多平台预构建镜像，支持 `amd64`、`arm64` 和 `arm/v7` 架构。
-
-#### Docker Run
-
-```bash
-docker run -d \
-  --name uptime-monitor \
-  -p 3000:3000 \
-  -v ./data:/app/data \
-  --restart unless-stopped \
-  ghcr.io/YOUR_USERNAME/uptime-monitor-docker:latest
-```
-
-#### Docker Compose
-
-创建 `docker-compose.yml`:
-
 ```yaml
 version: '3.8'
 
 services:
   uptime-monitor:
-    image: ghcr.io/YOUR_USERNAME/uptime-monitor-docker:latest
+    image: ghcr.io/debbide/monitor:latest
     container_name: uptime-monitor
     restart: unless-stopped
     ports:
@@ -66,8 +48,8 @@ docker-compose up -d
 
 ```bash
 # 克隆仓库
-git clone https://github.com/YOUR_USERNAME/uptime-monitor-docker.git
-cd uptime-monitor-docker
+git clone https://github.com/debbide/monitor.git
+cd monitor
 
 # 使用 Docker Compose 构建并启动
 docker-compose up -d
