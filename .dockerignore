@@ -1,9 +1,52 @@
+# Dependencies
 node_modules
+package-lock.json
+
+# Build output (will be copied from builder stage)
 dist
+
+# Data
 data
-*.log
+*.db
+*.sqlite
+
+# Git
 .git
 .gitignore
-README.md
+.github
+
+# Documentation
+*.md
+!README.md
+
+# Configuration
 .env
 .env.*
+.editorconfig
+.prettierrc
+.prettierignore
+.eslintrc.cjs
+
+# Logs
+*.log
+logs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage
+.nyc_output
+
+# Temporary
+*.tmp
+*.temp
+.cache
+

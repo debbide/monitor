@@ -1,0 +1,8 @@
+dist
+node_modules
+*.lock
+.git
+.github
+data
+coverage
+build

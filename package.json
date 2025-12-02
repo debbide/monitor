@@ -10,7 +10,12 @@
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "start": "node dist/server/index.js",
-    "preview": "npm run build && npm run start"
+    "preview": "npm run build && npm run start",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "type-check": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -26,8 +31,14 @@
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/sql.js": "^1.4.9",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^9.1.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "prettier": "^3.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tsx": "^4.19.2",
