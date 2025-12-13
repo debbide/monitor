@@ -7,6 +7,7 @@ import crypto from 'crypto'
 import { initDatabase, queryAll, queryFirst, run } from './db.js'
 import { Monitor, MonitorCheck } from './types.js'
 import { checkAllMonitors, checkMonitor, hashPassword, verifyPassword } from './monitor.js'
+import { initTelegramBot, getTelegramBotStatus, stopTelegramBot, setTgBotToken, getTgBotToken, testChatConnection, sendTgMessage } from './telegram.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -34,34 +35,46 @@ app.post('/api/monitors', async (req, res) => {
     const id = crypto.randomUUID()
 
     run(
-      `INSERT INTO monitors (id, name, url, check_interval, check_interval_max, check_type, check_method, check_timeout, expected_status_codes, expected_keyword, forbidden_keyword, komari_offline_threshold, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      `INSERT INTO monitors (id, name, url, check_interval, check_interval_max, check_type, check_method, check_timeout, expected_status_codes, expected_keyword, forbidden_keyword, komari_offline_threshold, tg_chat_id, tg_offline_keywords, tg_online_keywords, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         id,
         body.name,
-        body.url,
-        body.check_interval || 5,
-        body.check_interval_max || null,
+        body.url || '',
+        parseInt(body.check_interval) || 5,
+        body.check_interval_max ? parseInt(body.check_interval_max) : null,
         body.check_type || 'http',
         body.check_method || 'GET',
-        body.check_timeout || 30,
+        parseInt(body.check_timeout) || 30,
         body.expected_status_codes || '200,201,204,301,302',
         body.expected_keyword || null,
         body.forbidden_keyword || null,
-        body.komari_offline_threshold || 3,
+        parseInt(body.komari_offline_threshold) || 3,
+        body.tg_chat_id || null,
+        body.tg_offline_keywords || null,
+        body.tg_online_keywords || null,
         body.webhook_url || null,
         body.webhook_content_type || 'application/json',
-        body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,
-        body.webhook_body ? JSON.stringify(body.webhook_body) : null,
+        body.webhook_headers && typeof body.webhook_headers === 'object' ? JSON.stringify(body.webhook_headers) : (body.webhook_headers || null),
+        body.webhook_body && typeof body.webhook_body === 'object' ? JSON.stringify(body.webhook_body) : (body.webhook_body || null),
         body.webhook_username || null
       ]
     )
 
     const monitor = queryFirst('SELECT * FROM monitors WHERE id = ?', [id]) as Monitor
 
-    // 创建后立即检查一次
+    // 创建后立即检查一次（Telegram 类型插入默认正常状态）
     if (monitor) {
-      await checkMonitor(monitor)
+      if (monitor.check_type === 'telegram') {
+        // Telegram 类型：插入一条默认正常状态的记录
+        run(
+          `INSERT INTO monitor_checks (monitor_id, status, response_time, status_code, error_message, checked_at)
+           VALUES (?, 'up', 0, 0, NULL, datetime('now'))`,
+          [id]
+        )
+      } else {
+        await checkMonitor(monitor)
+      }
     }
 
     res.status(201).json(monitor)
@@ -277,6 +290,21 @@ app.post('/api/test-webhook', async (req, res) => {
       body: JSON.stringify(payload)
     })
 
+    // 如果是 Telegram 类型，向群组发送确认消息
+    if (monitor.check_type === 'telegram' && monitor.tg_chat_id) {
+      try {
+        const webhookConfirmMsg = [
+          `📤 **Webhook 测试成功**`,
+          `📊 监控: ${monitor.name}`,
+          `🔗 Webhook 已发送测试通知`,
+          `⏰ ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
+        ].join('\n')
+        await sendTgMessage(monitor.tg_chat_id, webhookConfirmMsg)
+      } catch (err) {
+        console.error('发送 TG 确认消息失败:', err)
+      }
+    }
+
     res.json({ success: true, message: 'Test webhook sent' })
   } catch (error: any) {
     res.status(500).json({ error: error.message })
@@ -372,6 +400,130 @@ app.post('/api/auth/change-password', async (req, res) => {
   }
 })
 
+// 获取 TG Bot 设置和状态
+app.get('/api/settings/telegram', (req, res) => {
+  try {
+    const status = getTelegramBotStatus()
+    res.json(status)
+  } catch (error: any) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// 设置 TG Bot Token
+app.post('/api/settings/telegram', async (req, res) => {
+  try {
+    const { token } = req.body
+    const result = await setTgBotToken(token || '')
+    res.json(result)
+  } catch (error: any) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// 测试群组连通性
+app.post('/api/settings/telegram/test-chat', async (req, res) => {
+  try {
+    const { chat_id } = req.body
+    const result = await testChatConnection(chat_id)
+    res.json(result)
+  } catch (error: any) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// 接收 Komari TG 中转服务的 Webhook
+app.post('/api/webhook/komari', async (req, res) => {
+  try {
+    const { source, status, server_name, raw_message, timestamp } = req.body
+
+    console.log(`📩 收到 Komari TG 中转通知: ${server_name} -> ${status}`)
+
+    // 查找匹配的 Komari 监控项
+    const monitors = queryAll(
+      "SELECT * FROM monitors WHERE check_type = 'komari' AND is_active = 1"
+    ) as Monitor[]
+
+    let matched = false
+
+    for (const monitor of monitors) {
+      // 检查是否匹配目标服务器
+      const targetServers = monitor.expected_keyword
+        ? monitor.expected_keyword.split(',').map(s => s.trim()).filter(s => s)
+        : null
+
+      // 如果设置了目标服务器，检查是否匹配
+      if (targetServers && targetServers.length > 0) {
+        const isTarget = targetServers.some(target =>
+          server_name.toLowerCase().includes(target.toLowerCase()) ||
+          target.toLowerCase().includes(server_name.toLowerCase())
+        )
+        if (!isTarget) continue
+      }
+
+      matched = true
+      const checkStatus = status === 'down' ? 'down' : 'up'
+
+      // 保存检查记录
+      run(
+        `INSERT INTO monitor_checks (monitor_id, status, response_time, status_code, error_message, checked_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          monitor.id,
+          checkStatus,
+          0,
+          0,
+          checkStatus === 'down' ? `TG 通知: ${server_name} 离线` : '',
+          timestamp || new Date().toISOString()
+        ]
+      )
+
+      // 如果是离线状态，创建事件
+      if (checkStatus === 'down') {
+        const existingIncident = queryFirst(
+          'SELECT id FROM incidents WHERE monitor_id = ? AND resolved_at IS NULL',
+          [monitor.id]
+        )
+
+        if (!existingIncident) {
+          run(
+            'INSERT INTO incidents (monitor_id, started_at, notified) VALUES (?, ?, 1)',
+            [monitor.id, new Date().toISOString()]
+          )
+        }
+      } else {
+        // 上线则解决事件
+        const incident = queryFirst(
+          'SELECT * FROM incidents WHERE monitor_id = ? AND resolved_at IS NULL',
+          [monitor.id]
+        ) as any
+
+        if (incident) {
+          const resolvedAt = new Date().toISOString()
+          const startedAt = new Date(incident.started_at)
+          const durationSeconds = Math.floor((Date.now() - startedAt.getTime()) / 1000)
+
+          run(
+            'UPDATE incidents SET resolved_at = ?, duration_seconds = ? WHERE id = ?',
+            [resolvedAt, durationSeconds, incident.id]
+          )
+        }
+      }
+
+      console.log(`✅ 已更新监控 "${monitor.name}" 状态为 ${checkStatus}`)
+    }
+
+    if (matched) {
+      res.json({ success: true, message: 'Status updated' })
+    } else {
+      res.json({ success: true, message: 'No matching monitor found' })
+    }
+  } catch (error: any) {
+    console.error('Webhook error:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
+
 // 获取 Komari 服务器状态
 app.get('/api/komari-status/:id', async (req, res) => {
   try {
@@ -447,6 +599,9 @@ app.get('*', (req, res) => {
 async function start() {
   await initDatabase()
 
+  // 初始化 Telegram Bot（如果配置了 Token）
+  initTelegramBot()
+
   // 启动定时任务 - 每分钟检查一次，根据各监控的间隔决定是否执行
   cron.schedule('* * * * *', () => {
     console.log('Running scheduled monitor check...')
@@ -459,6 +614,12 @@ async function start() {
 
     // 启动时执行一次检查
     checkAllMonitors()
+  })
+
+  // 优雅关闭
+  process.on('SIGTERM', () => {
+    stopTelegramBot()
+    process.exit(0)
   })
 }
 

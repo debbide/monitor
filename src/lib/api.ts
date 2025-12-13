@@ -5,14 +5,17 @@ export interface Monitor {
   name: string
   url: string
   check_interval: number
-  check_interval_max: number | null  // HTTP模式随机间隔最大值
-  check_type: 'http' | 'tcp' | 'komari'
+  check_interval_max: number | null
+  check_type: 'http' | 'tcp' | 'komari' | 'telegram'
   check_method: 'GET' | 'HEAD' | 'POST'
   check_timeout: number
   expected_status_codes: string
   expected_keyword: string | null
   forbidden_keyword: string | null
   komari_offline_threshold: number
+  tg_chat_id: string | null
+  tg_offline_keywords: string | null
+  tg_online_keywords: string | null
   webhook_url: string | null
   webhook_content_type: string
   webhook_headers: string | null
@@ -80,16 +83,19 @@ export async function getMonitors(): Promise<Monitor[]> {
 
 export async function createMonitor(monitor: {
   name: string
-  url: string
+  url?: string
   check_interval?: number
   check_interval_max?: number | null
-  check_type?: 'http' | 'tcp' | 'komari'
+  check_type?: 'http' | 'tcp' | 'komari' | 'telegram'
   check_method?: 'GET' | 'HEAD' | 'POST'
   check_timeout?: number
   expected_status_codes?: string
   expected_keyword?: string
   forbidden_keyword?: string
   komari_offline_threshold?: number
+  tg_chat_id?: string
+  tg_offline_keywords?: string
+  tg_online_keywords?: string
   webhook_url?: string
   webhook_content_type?: string
   webhook_headers?: Record<string, string>
@@ -110,16 +116,19 @@ export async function deleteMonitor(id: string): Promise<void> {
 
 export async function updateMonitor(id: string, monitor: {
   name: string
-  url: string
+  url?: string
   check_interval?: number
   check_interval_max?: number | null
-  check_type?: 'http' | 'tcp' | 'komari'
+  check_type?: 'http' | 'tcp' | 'komari' | 'telegram'
   check_method?: 'GET' | 'HEAD' | 'POST'
   check_timeout?: number
   expected_status_codes?: string
   expected_keyword?: string
   forbidden_keyword?: string
   komari_offline_threshold?: number
+  tg_chat_id?: string
+  tg_offline_keywords?: string
+  tg_online_keywords?: string
   webhook_url?: string
   webhook_content_type?: string
   webhook_headers?: Record<string, string>
@@ -185,5 +194,30 @@ export async function reorderMonitors(orders: { id: string; sort_order: number }
   await fetchAPI('/api/monitors/reorder', {
     method: 'PUT',
     body: JSON.stringify({ orders }),
+  })
+}
+
+// Telegram 设置
+export interface TelegramStatus {
+  enabled: boolean
+  connected: boolean
+  token: string
+}
+
+export async function getTelegramSettings(): Promise<TelegramStatus> {
+  return fetchAPI('/api/settings/telegram')
+}
+
+export async function setTelegramToken(token: string): Promise<{ success: boolean; message: string }> {
+  return fetchAPI('/api/settings/telegram', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  })
+}
+
+export async function testTelegramChat(chatId: string): Promise<{ success: boolean; message: string }> {
+  return fetchAPI('/api/settings/telegram/test-chat', {
+    method: 'POST',
+    body: JSON.stringify({ chat_id: chatId }),
   })
 }

@@ -955,3 +955,80 @@
     padding: calc(var(--spacing-unit) * 3);
   }
 }
+/* Telegram Bot 按钮样式 */
+.btn-telegram {
+  background: linear-gradient(135deg, #0088cc, #229ED9);
+  padding: calc(var(--spacing-unit) * 1.25) calc(var(--spacing-unit) * 1.5);
+  border-radius: var(--border-radius-sm);
+  font-size: 1.35rem;
+  line-height: 1;
+  box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);
+  margin-left: calc(var(--spacing-unit) * 2);
+}
+
+.btn-telegram:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 136, 204, 0.4);
+}
+
+.settings-modal {
+  max-width: 500px;
+}
+
+.settings-modal .message {
+  padding: calc(var(--spacing-unit) * 1.5);
+  border-radius: var(--border-radius-sm);
+  margin-bottom: calc(var(--spacing-unit) * 1.5);
+  font-size: 0.875rem;
+}
+
+.settings-modal .message.success {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--color-success);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.settings-modal .message.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 1);
+  padding: calc(var(--spacing-unit) * 1.5);
+  background: var(--color-surface-solid);
+  border-radius: var(--border-radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.status-indicator .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.status-indicator .status-dot.online {
+  background: var(--color-success);
+  box-shadow: 0 0 10px var(--color-success);
+}
+
+.status-indicator .status-dot.offline {
+  background: var(--color-text-secondary);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2.5);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+}

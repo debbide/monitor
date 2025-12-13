@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Komari WebSocket 连接测试 v2</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #00d9ff;
+            text-align: center;
+        }
+
+        .info-box {
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            margin-top: 0;
+            color: #00d9ff;
+        }
+
+        .info-box code {
+            background: #16213e;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f1c40f;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #16213e;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-connect {
+            background: linear-gradient(135deg, #00d9ff, #0099ff);
+            color: #fff;
+        }
+
+        .btn-connect:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.3);
+        }
+
+        .btn-send {
+            background: #2ecc71;
+            color: #fff;
+        }
+
+        .btn-disconnect {
+            background: #e74c3c;
+            color: #fff;
+        }
+
+        button:disabled {
+            background: #555 !important;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.disconnected {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+        }
+
+        .status.connecting {
+            background: rgba(241, 196, 15, 0.2);
+            border: 1px solid #f1c40f;
+            color: #f1c40f;
+        }
+
+        .status.connected {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+        }
+
+        .log-container {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #21262d;
+            word-break: break-all;
+        }
+
+        .log-entry.info {
+            color: #58a6ff;
+        }
+
+        .log-entry.success {
+            color: #3fb950;
+        }
+
+        .log-entry.error {
+            color: #f85149;
+        }
+
+        .log-entry.data {
+            color: #d2a8ff;
+        }
+
+        .log-entry.sent {
+            color: #f1c40f;
+        }
+
+        .log-time {
+            color: #666;
+            margin-right: 10px;
+        }
+
+        pre {
+            margin: 5px 0;
+            white-space: pre-wrap;
+            background: #161b22;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .server-list {
+            margin-top: 20px;
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .server-list h3 {
+            margin-top: 0;
+            color: #00d9ff;
+        }
+
+        .server-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #0d1117;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .server-name {
+            font-weight: bold;
+        }
+
+        .server-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .server-status.online {
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+        }
+
+        .server-status.offline {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+
+        .clear-btn {
+            background: #555;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔌 Komari WebSocket 测试 v2</h1>
+
+    <div class="info-box">
+        <h3>📖 Komari WebSocket API 说明</h3>
+        <p>根据 Komari 文档，WebSocket 连接流程如下：</p>
+        <ol>
+            <li>连接到 <code>/api/clients</code> 端点</li>
+            <li>连接成功后，发送字符串 <code>"get"</code></li>
+            <li>服务器将返回所有节点的实时数据</li>
+        </ol>
+    </div>
+
+    <div class="input-group">
+        <label>Komari 面板地址（不含路径）</label>
+        <input type="text" id="serverUrl" placeholder="例如: https://your-komari-panel.com 或 http://192.168.1.100:8080">
+    </div>
+
+    <div class="btn-group">
+        <button class="btn-connect" id="connectBtn" onclick="connect()">🚀 连接 /api/clients</button>
+        <button class="btn-send" id="sendBtn" onclick="sendGet()" disabled>📤 发送 "get"</button>
+        <button class="btn-disconnect" id="disconnectBtn" onclick="disconnect()" disabled>🔌 断开</button>
+    </div>
+
+    <div class="status disconnected" id="status">⚫ 未连接</div>
+
+    <button class="clear-btn" onclick="clearLog()">清空日志</button>
+    <div class="log-container" id="log"></div>
+
+    <div class="server-list" id="serverList" style="display: none;">
+        <h3>📊 检测到的服务器</h3>
+        <div id="serverItems"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let autoSendGet = true;
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString('zh-CN');
+            entry.innerHTML = `<span class="log-time">[${time}]</span>${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        function setStatus(status, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = text;
+        }
+
+        function parseAndDisplayServers(data) {
+            try {
+                const json = typeof data === 'string' ? JSON.parse(data) : data;
+                let servers = [];
+
+                // 尝试不同的数据结构
+                if (Array.isArray(json)) {
+                    servers = json;
+                } else if (json.data && Array.isArray(json.data)) {
+                    servers = json.data;
+                } else if (json.clients && Array.isArray(json.clients)) {
+                    servers = json.clients;
+                }
+
+                if (servers.length > 0) {
+                    const serverList = document.getElementById('serverList');
+                    const serverItems = document.getElementById('serverItems');
+                    serverList.style.display = 'block';
+                    serverItems.innerHTML = '';
+
+                    const now = Date.now();
+
+                    servers.forEach(server => {
+                        const item = document.createElement('div');
+                        item.className = 'server-item';
+
+                        const name = server.name || server.hostname || 'Unknown';
+                        const region = server.region || '';
+                        const updatedAt = server.updated_at || server.lastSeen || server.last_seen;
+
+                        let statusText = '未知';
+                        let statusClass = 'offline';
+
+                        if (updatedAt) {
+                            const updateTime = new Date(updatedAt).getTime();
+                            const diffMinutes = Math.floor((now - updateTime) / 60000);
+
+                            if (diffMinutes < 5) {
+                                statusText = `在线 (${diffMinutes}分钟前更新)`;
+                                statusClass = 'online';
+                            } else {
+                                statusText = `离线 (${diffMinutes}分钟前)`;
+                                statusClass = 'offline';
+                            }
+                        }
+
+                        item.innerHTML = `
+              <span class="server-name">${region}${name}</span>
+              <span class="server-status ${statusClass}">${statusText}</span>
+            `;
+                        serverItems.appendChild(item);
+                    });
+
+                    log(`✅ 成功解析 ${servers.length} 台服务器`, 'success');
+                }
+            } catch (e) {
+                // 解析失败，不显示服务器列表
+            }
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value.trim();
+
+            if (!serverUrl) {
+                log('❌ 请输入 Komari 面板地址', 'error');
+                return;
+            }
+
+            // 构建 WebSocket URL
+            let wsUrl = serverUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const protocol = serverUrl.startsWith('https') ? 'wss' : 'ws';
+            const fullUrl = `${protocol}://${wsUrl}/api/clients`;
+
+            log(`📡 正在连接: ${fullUrl}`, 'info');
+            setStatus('connecting', '🟡 连接中...');
+
+            try {
+                ws = new WebSocket(fullUrl);
+
+                ws.onopen = function () {
+                    log('✅ WebSocket 连接成功！', 'success');
+                    setStatus('connected', '🟢 已连接');
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('sendBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = false;
+
+                    // 自动发送 "get" 命令
+                    if (autoSendGet) {
+                        setTimeout(() => {
+                            log('🔄 自动发送 "get" 命令...', 'info');
+                            sendGet();
+                        }, 500);
+                    }
+                };
+
+                ws.onmessage = function (event) {
+                    let data = event.data;
+                    let displayData = data;
+
+                    try {
+                        const json = JSON.parse(data);
+                        displayData = JSON.stringify(json, null, 2);
+                        parseAndDisplayServers(json);
+                    } catch { }
+
+                    // 截断过长的数据
+                    const maxLen = 2000;
+                    if (displayData.length > maxLen) {
+                        displayData = displayData.substring(0, maxLen) + '\n... (数据已截断)';
+                    }
+
+                    log(`📦 收到数据:<pre>${escapeHtml(displayData)}</pre>`, 'data');
+                };
+
+                ws.onerror = function (error) {
+                    log(`❌ 连接错误: ${error.message || '未知错误'} - 可能是 CORS 限制或端点不支持`, 'error');
+                    setStatus('disconnected', '🔴 连接失败');
+                };
+
+                ws.onclose = function (event) {
+                    let reason = event.reason || '无';
+                    if (event.code === 1006) {
+                        reason = '异常关闭 (可能是 CORS 限制或服务器不支持)';
+                    }
+                    log(`🔌 连接已关闭 (代码: ${event.code}, 原因: ${reason})`, 'info');
+                    setStatus('disconnected', '⚫ 已断开');
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('sendBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    ws = null;
+                };
+
+            } catch (error) {
+                log(`❌ 创建连接失败: ${error.message}`, 'error');
+                setStatus('disconnected', '🔴 连接失败');
+            }
+        }
+
+        function sendGet() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send('get');
+                log('📤 已发送: "get"', 'sent');
+            } else {
+                log('❌ 未连接，无法发送', 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                log('👋 正在断开连接...', 'info');
+                ws.close();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

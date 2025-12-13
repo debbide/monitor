@@ -42,6 +42,15 @@ export async function initDatabase(): Promise<Database> {
     db.run("INSERT INTO admin_credentials (id, password_hash) VALUES (1, 'JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=')")
   }
 
+  // 系统设置表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
   db.run(`
     CREATE TABLE IF NOT EXISTS monitors (
       id TEXT PRIMARY KEY,
@@ -81,6 +90,18 @@ export async function initDatabase(): Promise<Database> {
   } catch (e) {
     // 字段已存在，忽略错误
   }
+
+  // 迁移：为旧数据库添加 Telegram 相关字段
+  try {
+    db.run(`ALTER TABLE monitors ADD COLUMN tg_chat_id TEXT`)
+  } catch (e) { }
+  try {
+    db.run(`ALTER TABLE monitors ADD COLUMN tg_offline_keywords TEXT`)
+  } catch (e) { }
+  try {
+    db.run(`ALTER TABLE monitors ADD COLUMN tg_online_keywords TEXT`)
+  } catch (e) { }
+
 
   db.run(`
     CREATE TABLE IF NOT EXISTS monitor_checks (

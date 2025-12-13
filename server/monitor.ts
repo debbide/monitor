@@ -81,6 +81,11 @@ export async function checkMonitor(monitor: Monitor) {
   const timeout = (monitor.check_timeout || 30) * 1000
   const checkType = monitor.check_type || 'http'
 
+  // Telegram 类型不执行主动检查，只通过消息被动更新状态
+  if (checkType === 'telegram') {
+    return // 跳过，状态由 telegram.ts 处理
+  }
+
   try {
     if (checkType === 'tcp') {
       const result = await checkTCP(monitor.url, timeout)
@@ -192,7 +197,7 @@ async function checkHTTP(monitor: Monitor, timeout: number): Promise<{
     }
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      return { success: false, statusCode: 0, error: `超时 (${timeout/1000}秒)` }
+      return { success: false, statusCode: 0, error: `超时 (${timeout / 1000}秒)` }
     }
     return { success: false, statusCode: 0, error: error.message }
   }
@@ -226,11 +231,11 @@ async function checkTCP(url: string, timeout: number): Promise<{
     return { success: true }
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      return { success: false, error: `连接超时 (${timeout/1000}秒)` }
+      return { success: false, error: `连接超时 (${timeout / 1000}秒)` }
     }
     if (error.message.includes('Failed to fetch') ||
-        error.message.includes('connection') ||
-        error.message.includes('ECONNREFUSED')) {
+      error.message.includes('connection') ||
+      error.message.includes('ECONNREFUSED')) {
       return { success: false, error: '连接失败' }
     }
     return { success: true }
@@ -311,7 +316,7 @@ async function checkKomari(monitor: Monitor, timeout: number): Promise<{
     }
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      return { success: false, statusCode: 0, error: `超时 (${timeout/1000}秒)` }
+      return { success: false, statusCode: 0, error: `超时 (${timeout / 1000}秒)` }
     }
     return { success: false, statusCode: 0, error: error.message }
   }

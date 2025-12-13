@@ -6,6 +6,7 @@ import AddMonitorForm from './components/AddMonitorForm'
 import LoginForm from './components/LoginForm'
 import ChangePasswordModal from './components/ChangePasswordModal'
 import DashboardStats from './components/DashboardStats'
+import TelegramSettings from './components/TelegramSettings'
 import { verifyPassword, setAuthToken, generateAuthToken, isAuthenticated, clearAuthToken } from './lib/auth'
 import './App.css'
 
@@ -21,6 +22,7 @@ function App() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [showTelegramSettings, setShowTelegramSettings] = useState(false)
   const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme')
@@ -239,6 +241,9 @@ function App() {
             <button className="btn-logout" onClick={handleLogout}>
               退出登录
             </button>
+            <button className="btn-telegram" onClick={() => setShowTelegramSettings(true)} title="Telegram Bot 设置">
+              🤖
+            </button>
           </div>
         </div>
       </header>
@@ -287,6 +292,10 @@ function App() {
             handleLogout()
           }}
         />
+      )}
+
+      {showTelegramSettings && (
+        <TelegramSettings onClose={() => setShowTelegramSettings(false)} />
       )}
 
       {showAddForm && (

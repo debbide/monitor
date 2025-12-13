@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { createMonitor, updateMonitor, Monitor } from '../lib/api'
+import { createMonitor, updateMonitor, Monitor, testTelegramChat } from '../lib/api'
 
 interface AddMonitorFormProps {
   onSuccess: () => void
@@ -13,13 +13,17 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
   const [interval, setInterval] = useState('5')
   const [intervalMax, setIntervalMax] = useState('')
   const [enableRandomInterval, setEnableRandomInterval] = useState(false)
-  const [checkType, setCheckType] = useState<'http' | 'tcp' | 'komari'>('http')
+  const [checkType, setCheckType] = useState<'http' | 'tcp' | 'komari' | 'telegram'>('http')
   const [checkMethod, setCheckMethod] = useState<'GET' | 'HEAD' | 'POST'>('GET')
   const [checkTimeout, setCheckTimeout] = useState('30')
   const [expectedStatusCodes, setExpectedStatusCodes] = useState('200,201,204,301,302')
   const [expectedKeyword, setExpectedKeyword] = useState('')
   const [forbiddenKeyword, setForbiddenKeyword] = useState('')
   const [komariOfflineThreshold, setKomariOfflineThreshold] = useState('3')
+  // Telegram 相关状态
+  const [tgChatId, setTgChatId] = useState('')
+  const [tgOfflineKeywords, setTgOfflineKeywords] = useState('离线,offline,down,掉线')
+  const [tgOnlineKeywords, setTgOnlineKeywords] = useState('上线,online,up,恢复')
   const [webhookUrl, setWebhookUrl] = useState('')
   const [contentType, setContentType] = useState('application/json')
   const [headers, setHeaders] = useState('')
@@ -43,6 +47,9 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
       setExpectedKeyword(editMonitor.expected_keyword || '')
       setForbiddenKeyword(editMonitor.forbidden_keyword || '')
       setKomariOfflineThreshold(String(editMonitor.komari_offline_threshold || 3))
+      setTgChatId(editMonitor.tg_chat_id || '')
+      setTgOfflineKeywords(editMonitor.tg_offline_keywords || '离线,offline,down,掉线')
+      setTgOnlineKeywords(editMonitor.tg_online_keywords || '上线,online,up,恢复')
       setWebhookUrl(editMonitor.webhook_url || '')
       setContentType(editMonitor.webhook_content_type || 'application/json')
       setHeaders(editMonitor.webhook_headers || '')
@@ -54,9 +61,22 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
-    if (!name.trim() || !url.trim()) {
-      alert('请填写监控名称和URL')
+    if (!name.trim()) {
+      alert('请填写监控名称')
       return
+    }
+
+    // Telegram 类型需要群组 ID，其他类型需要 URL
+    if (checkType === 'telegram') {
+      if (!tgChatId.trim()) {
+        alert('请填写群组 ID')
+        return
+      }
+    } else {
+      if (!url.trim()) {
+        alert('请填写 URL')
+        return
+      }
     }
 
     let parsedHeaders = {}
@@ -89,7 +109,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
 
       const monitorData = {
         name: name.trim(),
-        url: url.trim(),
+        url: checkType === 'telegram' ? '' : url.trim(),
         check_interval: intervalNum,
         check_interval_max: (checkType === 'http' && enableRandomInterval && intervalMaxNum && intervalMaxNum > intervalNum) ? intervalMaxNum : null,
         check_type: checkType,
@@ -99,6 +119,9 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
         expected_keyword: expectedKeyword.trim() || undefined,
         forbidden_keyword: forbiddenKeyword.trim() || undefined,
         komari_offline_threshold: thresholdNum,
+        tg_chat_id: tgChatId.trim() || undefined,
+        tg_offline_keywords: tgOfflineKeywords.trim() || undefined,
+        tg_online_keywords: tgOnlineKeywords.trim() || undefined,
         webhook_url: webhookUrl.trim() || undefined,
         webhook_content_type: contentType,
         webhook_headers: Object.keys(parsedHeaders).length > 0 ? parsedHeaders : undefined,
@@ -114,9 +137,10 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
       }
 
       onSuccess()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving monitor:', error)
-      alert(isEditMode ? '保存失败' : '添加失败')
+      const errorMsg = error?.message || '未知错误'
+      alert(isEditMode ? `保存失败: ${errorMsg}` : `添加失败: ${errorMsg}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -135,6 +159,9 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
     setExpectedKeyword('')
     setForbiddenKeyword('')
     setKomariOfflineThreshold('3')
+    setTgChatId('')
+    setTgOfflineKeywords('离线,offline,down,掉线')
+    setTgOnlineKeywords('上线,online,up,恢复')
     setWebhookUrl('')
     setContentType('application/json')
     setHeaders('')
@@ -159,21 +186,23 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
           />
         </div>
 
-        <div className="form-group">
-          <label htmlFor="url">
-            {checkType === 'komari' ? 'Komari API 地址' : '网站URL'}
-          </label>
-          <input
-            id="url"
-            type="text"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder={checkType === 'komari'
-              ? 'https://your-komari-domain.com/api/client'
-              : 'https://example.com 或 example.com:8080'}
-            required
-          />
-        </div>
+        {checkType !== 'telegram' && (
+          <div className="form-group">
+            <label htmlFor="url">
+              {checkType === 'komari' ? 'Komari API 地址' : '网站URL'}
+            </label>
+            <input
+              id="url"
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder={checkType === 'komari'
+                ? 'https://your-komari-domain.com/api/client'
+                : 'https://example.com 或 example.com:8080'}
+              required
+            />
+          </div>
+        )}
       </div>
 
       <div className="form-section">
@@ -185,11 +214,12 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
             <select
               id="checkType"
               value={checkType}
-              onChange={(e) => setCheckType(e.target.value as 'http' | 'tcp' | 'komari')}
+              onChange={(e) => setCheckType(e.target.value as 'http' | 'tcp' | 'komari' | 'telegram')}
             >
               <option value="http">HTTP 检测</option>
               <option value="tcp">TCP 连通性检测 (Ping)</option>
               <option value="komari">Komari 面板监控</option>
+              <option value="telegram">Telegram 群组监控</option>
             </select>
           </div>
 
@@ -339,6 +369,75 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
               <span className="form-hint" style={{ display: 'block', marginTop: '8px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
                 <strong>URL 格式：</strong>填写 Komari 面板的 API 地址，例如：<br />
                 <code style={{ background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>https://your-domain.com/api/client</code>
+              </span>
+            </div>
+          </>
+        )}
+
+        {checkType === 'telegram' && (
+          <>
+            <div className="form-group">
+              <label htmlFor="tgChatId">群组 ID</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  id="tgChatId"
+                  type="text"
+                  value={tgChatId}
+                  onChange={(e) => setTgChatId(e.target.value)}
+                  placeholder="例如: -1001234567890"
+                  required
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={async () => {
+                    if (!tgChatId.trim()) {
+                      alert('请先输入群组 ID')
+                      return
+                    }
+                    try {
+                      const result = await testTelegramChat(tgChatId.trim())
+                      alert(result.message)
+                    } catch (err: any) {
+                      alert('测试失败: ' + err.message)
+                    }
+                  }}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  📡 测试连接
+                </button>
+              </div>
+              <span className="form-hint">Telegram 群组 ID（负数），可通过 @userinfobot 获取</span>
+            </div>
+            <div className="form-group">
+              <label htmlFor="tgOfflineKeywords">离线关键词</label>
+              <input
+                id="tgOfflineKeywords"
+                type="text"
+                value={tgOfflineKeywords}
+                onChange={(e) => setTgOfflineKeywords(e.target.value)}
+                placeholder="离线,offline,down,掉线"
+              />
+              <span className="form-hint">消息包含这些关键词时判定为离线，多个用逗号分隔</span>
+            </div>
+            <div className="form-group">
+              <label htmlFor="tgOnlineKeywords">上线关键词</label>
+              <input
+                id="tgOnlineKeywords"
+                type="text"
+                value={tgOnlineKeywords}
+                onChange={(e) => setTgOnlineKeywords(e.target.value)}
+                placeholder="上线,online,up,恢复"
+              />
+              <span className="form-hint">消息包含这些关键词时判定为上线，多个用逗号分隔</span>
+            </div>
+            <div className="form-group">
+              <span className="form-hint" style={{ display: 'block', marginTop: '8px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                <strong>使用说明：</strong><br />
+                1. 先在顶栏 🤖 按钮配置 Bot Token<br />
+                2. 将 Bot 加入到监控的群组<br />
+                3. 填写群组 ID 后可点击下方按钮测试连通性
               </span>
             </div>
           </>
