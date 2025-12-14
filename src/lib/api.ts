@@ -88,7 +88,7 @@ export async function createMonitor(monitor: {
   url?: string
   check_interval?: number
   check_interval_max?: number | null
-  check_type?: 'http' | 'tcp' | 'komari' | 'telegram'
+  check_type?: 'http' | 'tcp' | 'komari' | 'komari_webhook' | 'telegram'
   check_method?: 'GET' | 'HEAD' | 'POST'
   check_timeout?: number
   expected_status_codes?: string
@@ -123,7 +123,7 @@ export async function updateMonitor(id: string, monitor: {
   url?: string
   check_interval?: number
   check_interval_max?: number | null
-  check_type?: 'http' | 'tcp' | 'komari' | 'telegram'
+  check_type?: 'http' | 'tcp' | 'komari' | 'komari_webhook' | 'telegram'
   check_method?: 'GET' | 'HEAD' | 'POST'
   check_timeout?: number
   expected_status_codes?: string

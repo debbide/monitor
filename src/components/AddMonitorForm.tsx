@@ -13,7 +13,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
   const [interval, setInterval] = useState('5')
   const [intervalMax, setIntervalMax] = useState('')
   const [enableRandomInterval, setEnableRandomInterval] = useState(false)
-  const [checkType, setCheckType] = useState<'http' | 'tcp' | 'komari' | 'telegram'>('http')
+  const [checkType, setCheckType] = useState<'http' | 'tcp' | 'komari' | 'komari_webhook' | 'telegram'>('http')
   const [checkMethod, setCheckMethod] = useState<'GET' | 'HEAD' | 'POST'>('GET')
   const [checkTimeout, setCheckTimeout] = useState('30')
   const [expectedStatusCodes, setExpectedStatusCodes] = useState('200,201,204,301,302')
@@ -70,10 +70,14 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
       return
     }
 
-    // Telegram 类型需要群组 ID，其他类型需要 URL
-    if (checkType === 'telegram') {
-      if (!tgChatId.trim()) {
+    // Telegram 和 komari_webhook 类型不需要 URL，其他类型需要 URL
+    if (checkType === 'telegram' || checkType === 'komari_webhook') {
+      if (checkType === 'telegram' && !tgChatId.trim()) {
         alert('请填写群组 ID')
+        return
+      }
+      if (checkType === 'komari_webhook' && !expectedKeyword.trim()) {
+        alert('请填写监控目标服务器（用于匹配 Komari 通知）')
         return
       }
     } else {
@@ -194,7 +198,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
           />
         </div>
 
-        {checkType !== 'telegram' && (
+        {checkType !== 'telegram' && checkType !== 'komari_webhook' && (
           <div className="form-group">
             <label htmlFor="url">
               {checkType === 'komari' ? 'Komari API 地址' : '网站URL'}
@@ -222,11 +226,12 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
             <select
               id="checkType"
               value={checkType}
-              onChange={(e) => setCheckType(e.target.value as 'http' | 'tcp' | 'komari' | 'telegram')}
+              onChange={(e) => setCheckType(e.target.value as 'http' | 'tcp' | 'komari' | 'komari_webhook' | 'telegram')}
             >
               <option value="http">HTTP 检测</option>
               <option value="tcp">TCP 连通性检测 (Ping)</option>
-              <option value="komari">Komari 面板监控</option>
+              <option value="komari">Komari 轮询监控</option>
+              <option value="komari_webhook">Komari Webhook 监控</option>
               <option value="telegram">Telegram 群组监控</option>
             </select>
           </div>
@@ -389,6 +394,33 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
                 placeholder="例如: -1001234567890"
               />
               <span className="form-hint">触发告警时同步发送消息到此 TG 群组，便于观察误报情况（需先在顶栏配置 Bot Token）</span>
+            </div>
+          </>
+        )}
+
+        {checkType === 'komari_webhook' && (
+          <>
+            <div className="form-group">
+              <label htmlFor="expectedKeyword">监控目标服务器（用于匹配 Komari 通知）</label>
+              <input
+                id="expectedKeyword"
+                type="text"
+                value={expectedKeyword}
+                onChange={(e) => setExpectedKeyword(e.target.value)}
+                placeholder="服务器名称（多个用逗号分隔）"
+                required
+              />
+              <span className="form-hint">
+                当收到 Komari 通知时，会匹配此名称触发告警和 Webhook（需先在 📡 设置启用接收）
+              </span>
+            </div>
+            <div className="form-group">
+              <span className="form-hint" style={{ display: 'block', marginTop: '8px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                <strong>📡 Komari Webhook 监控说明：</strong><br />
+                1. 在顶栏 📡 按钮中启用 Komari 通知接收并填写 TG 群组 ID<br />
+                2. 在 Komari 面板设置 Webhook 指向：<code style={{ background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>https://你的域名/api/komari-notify</code><br />
+                3. 收到离线通知时会匹配此监控项并触发下方配置的 Webhook
+              </span>
             </div>
           </>
         )}

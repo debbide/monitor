@@ -546,9 +546,9 @@ app.post('/api/komari-notify', async (req, res) => {
     const isOffline = textLower.includes('离线') || textLower.includes('offline') || textLower.includes('down') || textLower.includes('掉线')
     const isRecovery = textLower.includes('恢复') || textLower.includes('上线') || textLower.includes('online') || textLower.includes('recovery') || textLower.includes('up')
 
-    // 查找所有 Komari 类型的监控项
+    // 查找所有 Komari Webhook 类型的监控项（被动接收通知）
     const monitors = queryAll(
-      "SELECT * FROM monitors WHERE check_type = 'komari' AND is_active = 1"
+      "SELECT * FROM monitors WHERE check_type = 'komari_webhook' AND is_active = 1"
     ) as Monitor[]
 
     // 从消息中匹配服务器名称
