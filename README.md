@@ -3,16 +3,18 @@
 [![Docker Build](https://github.com/debbide/monitor/actions/workflows/docker-build.yml/badge.svg)](https://github.com/debbide/monitor/actions/workflows/docker-build.yml)
 [![Code Quality](https://github.com/debbide/monitor/actions/workflows/code-quality.yml/badge.svg)](https://github.com/debbide/monitor/actions/workflows/code-quality.yml)
 
-一个现代化的服务监控面板，支持 HTTP/TCP/Komari 面板监控，基于 Docker 快速部署。
+一个现代化的服务监控面板，支持 HTTP/TCP/Komari/Telegram 监控，基于 Docker 快速部署。
 
 ## ✨ 特性
 
 - 🌐 **HTTP/HTTPS 检测** - 支持自定义请求方法和关键词检测
 - 🔌 **TCP 连通性检测** - 端口可用性监控
 - 📊 **Komari 面板监控** - 服务器状态监控
+- 📱 **Telegram 群组监控** - 监听 TG 群组消息，根据关键词判断服务状态
 - 🔔 **Webhook 通知** - 自定义 Webhook 通知（支持 Discord、Slack 等）
+- 📡 **SSE 实时推送** - 浏览器插件可实时接收刷新通知
 - 🔍 **关键词检测** - 检测页面是否包含/不包含特定关键词
-- ⏰ **定时检测** - 每 5 分钟自动检测
+- ⏰ **定时检测** - 可自定义检测间隔
 
 ### 使用预构建镜像（推荐）
 
@@ -77,9 +79,32 @@ docker run -d -p 3000:3000 -v ./data:/app/data uptime-monitor
 2. 填写监控信息：
    - 名称：监控项目名称
    - URL：要监控的网址或服务器地址
-   - 检测类型：HTTP、TCP 或 Komari
+   - 检测类型：HTTP、TCP、Komari 或 Telegram
    - 检测间隔：检测频率（分钟）
-   - Webhook URL：（可选）通知地址
+   - Webhook URL：（可选）故障时触发的通知地址
+
+### Telegram 群组监控
+
+监听 Telegram 群组消息，根据关键词判断服务状态：
+
+1. 在顶栏点击 🤖 按钮配置 Bot Token（从 @BotFather 获取）
+2. 将 Bot 加入要监控的群组
+3. 在 BotFather 中关闭 Bot 的 **Group Privacy** 模式
+4. 创建 Telegram 类型监控，填写：
+   - **群组 ID**：负数格式，如 `-1001234567890`
+   - **服务器名称**：消息中需包含的服务器名称（支持多个，逗号分隔）
+   - **离线关键词**：如 `Offline,down,离线`
+   - **上线关键词**：如 `Online,up,上线`
+
+### SSE 刷新通知服务
+
+内置 SSE 服务，可供浏览器插件接收实时刷新通知：
+
+| 端点 | 方法 | 用途 |
+|------|------|------|
+| `/api/sse/refresh` | GET | 浏览器插件连接保持长连接 |
+| `/api/webhook/refresh` | POST | 触发刷新通知 `{"url": "..."}` |
+| `/api/sse/status` | GET | 查看连接的客户端数量 |
 
 ### 配置 Webhook 通知
 
