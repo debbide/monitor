@@ -687,11 +687,20 @@ app.post('/api/komari-notify', async (req, res) => {
             headers['Authorization'] = `Basic ${encodedAuth}`
           }
 
+          console.log(`📤 发送 Webhook: ${matchedMonitor.webhook_url}`)
+
+          // 添加 10 秒超时控制
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 10000)
+
           const response = await fetch(matchedMonitor.webhook_url, {
             method: 'POST',
             headers,
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
           })
+
+          clearTimeout(timeoutId)
 
           webhookSuccess = response.ok
           if (!webhookSuccess) {
@@ -699,6 +708,10 @@ app.post('/api/komari-notify', async (req, res) => {
           }
         } catch (err: any) {
           webhookError = err.message
+          // 记录详细错误信息
+          if (err.cause) {
+            console.error('Webhook 详细错误:', err.cause)
+          }
         }
 
         // 3. 发送 TG Webhook 执行结果
