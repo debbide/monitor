@@ -42,6 +42,7 @@ RUN mkdir -p /app/data
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV DATA_DIR=/app/data
+ENV NODE_OPTIONS="--no-warnings"
 
 EXPOSE 3000
 
