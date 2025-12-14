@@ -8,6 +8,7 @@ import { initDatabase, queryAll, queryFirst, run } from './db.js'
 import { Monitor, MonitorCheck } from './types.js'
 import { checkAllMonitors, checkMonitor, hashPassword, verifyPassword } from './monitor.js'
 import { initTelegramBot, getTelegramBotStatus, stopTelegramBot, setTgBotToken, getTgBotToken, testChatConnection, sendTgMessage } from './telegram.js'
+import { addClient, broadcastRefresh, getClientCount, getClients } from './sse.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -439,6 +440,38 @@ app.post('/api/settings/telegram/test-chat', async (req, res) => {
   } catch (error: any) {
     res.status(500).json({ error: error.message })
   }
+})
+
+// ==================== SSE 刷新通知服务 ====================
+
+// SSE 连接端点 - 浏览器插件连接此端点接收实时刷新通知
+app.get('/api/sse/refresh', (req, res) => {
+  const clientId = crypto.randomUUID()
+  addClient(clientId, res)
+})
+
+// Webhook 接收端点 - 触发页面刷新
+app.post('/api/webhook/refresh', (req, res) => {
+  try {
+    const { url } = req.body
+
+    if (!url) {
+      return res.status(400).json({ error: 'url is required' })
+    }
+
+    broadcastRefresh(url, 'refresh')
+    res.json({ success: true, message: `Refresh notification sent for ${url}`, clients: getClientCount() })
+  } catch (error: any) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// 获取 SSE 客户端状态
+app.get('/api/sse/status', (req, res) => {
+  res.json({
+    connected_clients: getClientCount(),
+    clients: getClients()
+  })
 })
 
 // 接收 Komari TG 中转服务的 Webhook
