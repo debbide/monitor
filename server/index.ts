@@ -8,7 +8,7 @@ import { initDatabase, queryAll, queryFirst, run } from './db.js'
 import { Monitor, MonitorCheck } from './types.js'
 import { checkAllMonitors, checkMonitor, hashPassword, verifyPassword } from './monitor.js'
 import { initTelegramBot, getTelegramBotStatus, stopTelegramBot, setTgBotToken, getTgBotToken, testChatConnection, sendTgMessage } from './telegram.js'
-import { addClient, broadcastRefresh, getClientCount, getClients } from './sse.js'
+import { addClient, broadcastRefresh, getClientCount, getClients, pollRefresh } from './sse.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -473,6 +473,14 @@ app.get('/api/sse/status', (req, res) => {
     clients: getClients()
   })
 })
+
+// 轮询模式端点 - 供浏览器插件轮询获取刷新通知
+app.get('/poll', (req, res) => {
+  const since = (req.query.since as string) || '0'
+  const result = pollRefresh(since)
+  res.json(result)
+})
+
 
 // 接收 Komari TG 中转服务的 Webhook
 app.post('/api/webhook/komari', async (req, res) => {

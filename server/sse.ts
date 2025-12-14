@@ -1,5 +1,5 @@
 /**
- * SSE 事件管理器
+ * SSE 事件管理器 + 轮询模式支持
  * 用于向浏览器插件推送实时刷新通知
  */
 
@@ -11,8 +11,20 @@ interface SSEClient {
     connectedAt: Date
 }
 
+interface RefreshMessage {
+    id: string
+    type: string
+    url: string
+    match: string
+    timestamp: number
+}
+
 // 已连接的 SSE 客户端
 const clients: Map<string, SSEClient> = new Map()
+
+// 轮询模式：待通知消息队列
+let pendingRefresh: RefreshMessage | null = null
+let messageCounter = 0
 
 /**
  * 添加新的 SSE 客户端连接
@@ -55,18 +67,30 @@ export function addClient(clientId: string, res: Response): void {
 }
 
 /**
- * 广播刷新通知给所有客户端
+ * 广播刷新通知给所有客户端（SSE + 轮询）
  */
-export function broadcastRefresh(url: string, action: string = 'refresh'): void {
+export function broadcastRefresh(url: string, match: string = 'exact'): void {
+    messageCounter++
+    const messageId = `${Date.now()}-${messageCounter}`
+
+    // 保存到轮询队列
+    pendingRefresh = {
+        id: messageId,
+        type: 'refresh',
+        url,
+        match,
+        timestamp: Date.now()
+    }
+
+    console.log(`📤 广播刷新通知: ${url} -> SSE: ${clients.size} 个客户端, 轮询队列已更新`)
+
+    // SSE 广播
     const message = {
-        action,
+        action: 'refresh',
         url,
         timestamp: new Date().toISOString()
     }
-
     const data = `event: refresh\ndata: ${JSON.stringify(message)}\n\n`
-
-    console.log(`📤 广播刷新通知: ${url} -> ${clients.size} 个客户端`)
 
     clients.forEach((client) => {
         try {
@@ -76,6 +100,16 @@ export function broadcastRefresh(url: string, action: string = 'refresh'): void 
             clients.delete(client.id)
         }
     })
+}
+
+/**
+ * 轮询模式：获取待刷新消息
+ */
+export function pollRefresh(sinceId: string): RefreshMessage | { type: 'none' } {
+    if (pendingRefresh && pendingRefresh.id !== sinceId) {
+        return pendingRefresh
+    }
+    return { type: 'none' }
 }
 
 /**
@@ -94,3 +128,4 @@ export function getClients(): { id: string; connectedAt: Date }[] {
         connectedAt: c.connectedAt
     }))
 }
+
