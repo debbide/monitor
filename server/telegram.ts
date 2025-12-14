@@ -267,16 +267,21 @@ async function processMonitorMessage(
     if (bot && msg.chat.id) {
         const statusEmoji = newStatus === 'down' ? '🔴' : '🟢'
         const statusText = newStatus === 'down' ? '离线' : '上线'
+        const statusAction = newStatus === 'down' ? '⚠️ 已触发告警' : '✅ 状态已恢复'
+        const timeStr = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+
         const confirmMsg = [
-            `${statusEmoji} **已收到通知**`,
-            `📊 监控: ${monitor.name}`,
-            `🖥️ 服务器: ${matchedServerName}`,
-            `📌 状态: ${statusText} → 监控系统已更新`,
-            `⏰ ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
-        ].join('\\n')
+            `${statusEmoji} <b>CloudEye 监控通知</b>`,
+            ``,
+            `<b>📊 监控项:</b> ${monitor.name}`,
+            `<b>🖥️ 服务器:</b> ${matchedServerName}`,
+            `<b>📌 状态:</b> ${statusText} ${statusAction}`,
+            ``,
+            `<code>⏰ ${timeStr}</code>`
+        ].join('\n')
 
         try {
-            await bot.sendMessage(msg.chat.id, confirmMsg, { parse_mode: 'Markdown' })
+            await bot.sendMessage(msg.chat.id, confirmMsg, { parse_mode: 'HTML' })
         } catch (err) {
             console.error('发送确认消息失败:', err)
         }
