@@ -527,7 +527,24 @@ app.post('/api/komari-notify', async (req, res) => {
     const { message, title } = req.body
     const text = message || title || ''
 
-    console.log(`📩 收到 Komari 通知: ${title || '(无标题)'} - ${message?.substring(0, 50) || '(无内容)'}...`)
+    // 清理 HTML 标签
+    function stripHtml(html: string): string {
+      return html
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/━+/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+    }
+
+    const cleanTitle = stripHtml(title || '')
+    const cleanMessage = stripHtml(message || '')
+
+    console.log(`📩 收到 Komari 通知: ${cleanTitle || '(无标题)'} - ${cleanMessage?.substring(0, 50) || '(无内容)'}...`)
 
     // 检查是否启用
     const enabledResult = queryFirst("SELECT value FROM system_settings WHERE key = 'komari_notify_enabled'") as { value: string } | null
@@ -578,18 +595,28 @@ app.post('/api/komari-notify', async (req, res) => {
       // ===== 离线通知 =====
       console.log(`🔴 检测到离线通知${matchedMonitor ? ` (匹配监控: ${matchedMonitor.name}, 服务器: ${matchedServerName})` : ' (未匹配到监控)'}`)
 
-      // 1. 发送 TG 离线消息
+      // 1. 发送 TG 离线消息（使用清理后的内容）
       if (chatId) {
         const offlineMsg = [
           `🔴 *Komari 离线通知*`,
           ``,
-          `📋 *标题:* ${title || '(无)'}`,
-          `📝 *内容:* ${message || '(无)'}`,
+          `📋 *标题:* ${cleanTitle || '(无)'}`,
+          `📝 *内容:* ${cleanMessage || '(无)'}`,
           matchedMonitor ? `🖥️ *匹配监控:* ${matchedMonitor.name}` : `⚠️ *未匹配到监控项*`,
           ``,
           `\`⏰ ${timeStr}\``
         ].join('\n')
         await sendTgMessage(chatId, offlineMsg)
+      }
+
+      // 1.5 如果匹配到监控项，保存检查记录（更新面板状态）
+      if (matchedMonitor) {
+        run(
+          `INSERT INTO monitor_checks (monitor_id, status, response_time, status_code, error_message, checked_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [matchedMonitor.id, 'down', 0, 0, cleanMessage || '离线', new Date().toISOString()]
+        )
+        console.log(`📝 已记录监控 "${matchedMonitor.name}" 状态为 down`)
       }
 
       // 2. 如果匹配到监控项，使用其 Webhook 配置
@@ -690,13 +717,23 @@ app.post('/api/komari-notify', async (req, res) => {
         const recoveryMsg = [
           `🟢 *Komari 恢复通知*`,
           ``,
-          `📋 *标题:* ${title || '(无)'}`,
-          `📝 *内容:* ${message || '(无)'}`,
+          `📋 *标题:* ${cleanTitle || '(无)'}`,
+          `📝 *内容:* ${cleanMessage || '(无)'}`,
           matchedMonitor ? `🖥️ *匹配监控:* ${matchedMonitor.name}` : ``,
           ``,
           `\`⏰ ${timeStr}\``
         ].join('\n')
         await sendTgMessage(chatId, recoveryMsg)
+      }
+
+      // 如果匹配到监控项，保存检查记录（更新面板状态为正常）
+      if (matchedMonitor) {
+        run(
+          `INSERT INTO monitor_checks (monitor_id, status, response_time, status_code, error_message, checked_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [matchedMonitor.id, 'up', 0, 0, '', new Date().toISOString()]
+        )
+        console.log(`📝 已记录监控 "${matchedMonitor.name}" 状态为 up`)
       }
 
       res.json({
@@ -714,8 +751,8 @@ app.post('/api/komari-notify', async (req, res) => {
         const unknownMsg = [
           `📨 *Komari 通知*`,
           ``,
-          `📋 *标题:* ${title || '(无)'}`,
-          `📝 *内容:* ${message || '(无)'}`,
+          `📋 *标题:* ${cleanTitle || '(无)'}`,
+          `📝 *内容:* ${cleanMessage || '(无)'}`,
           ``,
           `\`⏰ ${timeStr}\``
         ].join('\n')

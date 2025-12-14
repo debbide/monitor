@@ -19,7 +19,10 @@ function getRandomInterval(min: number, max: number): number {
 
 export async function checkAllMonitors() {
   try {
-    const monitors = queryAll('SELECT * FROM monitors WHERE is_active = 1') as Monitor[]
+    // 排除 telegram 和 komari_webhook 类型，它们是被动接收通知的
+    const monitors = queryAll(
+      "SELECT * FROM monitors WHERE is_active = 1 AND check_type NOT IN ('telegram', 'komari_webhook')"
+    ) as Monitor[]
     const now = Date.now()
 
     for (const monitor of monitors) {
