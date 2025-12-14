@@ -4,7 +4,7 @@ export interface Monitor {
   url: string
   check_interval: number
   check_interval_max: number | null  // HTTP模式随机间隔最大值
-  check_type: 'http' | 'tcp' | 'komari' | 'telegram'
+  check_type: 'http' | 'tcp' | 'komari' | 'komari_webhook' | 'telegram'
   check_method: 'GET' | 'HEAD' | 'POST'
   check_timeout: number
   expected_status_codes: string

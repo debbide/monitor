@@ -318,6 +318,27 @@ app.post('/api/test-webhook', async (req, res) => {
       }
     }
 
+    // 如果是 Komari Webhook 类型，使用全局通知群组发送确认消息
+    if (monitor.check_type === 'komari_webhook') {
+      try {
+        const chatIdResult = queryFirst("SELECT value FROM system_settings WHERE key = 'komari_notify_chat_id'") as { value: string } | null
+        const chatId = chatIdResult?.value || ''
+        if (chatId) {
+          const webhookConfirmMsg = [
+            `📤 *Webhook 测试成功*`,
+            ``,
+            `🖥️ *监控:* ${monitor.name}`,
+            `🔗 *Webhook:* ${monitor.webhook_url.substring(0, 50)}...`,
+            ``,
+            `\`⏰ ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}\``
+          ].join('\n')
+          await sendTgMessage(chatId, webhookConfirmMsg)
+        }
+      } catch (err) {
+        console.error('发送 Komari Webhook TG 确认消息失败:', err)
+      }
+    }
+
     res.json({ success: true, message: 'Test webhook sent' })
   } catch (error: any) {
     res.status(500).json({ error: error.message })
